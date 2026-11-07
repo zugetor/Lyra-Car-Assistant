@@ -1,0 +1,149 @@
+{
+  "_comment": "v2: v1 + media (play/pause/next/previous/volume/mute), open_app (CarPlay, Android Auto), and warmer/cooler + fan up/down when the command has no number. 13 controls + none.",
+  "label_to_key": {
+    "aircon": "climate/mode",
+    "aircon_temp": "climate/temperature",
+    "aircon_fan": "climate/fan_mode"
+  },
+  "control": {
+    "type": "choice",
+    "instructions": "Which car control does this voice command operate?",
+    "criteria": {
+      "aircon": "AC on/off/auto แอร์",
+      "aircon_temp": "temperature, warmer or cooler องศา หนาว ร้อน",
+      "aircon_fan": "fan speed พัดลม ลม",
+      "windows_all": "windows กระจก",
+      "tailgate": "tailgate trunk ฝาท้าย ประตูท้าย",
+      "sunroof": "sunroof ซันรูฟ หลังคา",
+      "sunshade": "sun shade ม่าน",
+      "seat_vent_driver": "driver seat vent ระบายอากาศคนขับ",
+      "seat_vent_passenger": "passenger seat vent ระบายอากาศผู้โดยสาร",
+      "drl": "daytime lights ไฟเดย์ไลท์",
+      "wireless_charging": "wireless charger ชาร์จไร้สาย",
+      "media": "music and volume เพลง เสียง",
+      "open_app": "open CarPlay or Android Auto",
+      "none": "other: calls, navigation, weather โทร นำทาง"
+    }
+  },
+  "payloads": {
+    "motion": {
+      "controls": [
+        "windows_all",
+        "tailgate",
+        "sunroof",
+        "sunshade"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "What should the part do?",
+        "criteria": {
+          "OPEN": "open it",
+          "CLOSE": "close it",
+          "STOP": "stop moving"
+        }
+      }
+    },
+    "climate_mode": {
+      "controls": [
+        "climate/mode"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "What should the air conditioner do?",
+        "criteria": {
+          "auto": "turn on or auto เปิด ออโต้",
+          "off": "turn off ปิด"
+        }
+      }
+    },
+    "temp_dir": {
+      "_comment": "asked only when the command has no number",
+      "controls": [
+        "climate/temperature"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Should the cabin get warmer or cooler?",
+        "criteria": {
+          "warmer": "warmer, the person is cold อุ่นขึ้น หนาว",
+          "cooler": "cooler, the person is hot เย็นลง ร้อน"
+        }
+      }
+    },
+    "fan_dir": {
+      "_comment": "asked only when the command has no number",
+      "controls": [
+        "climate/fan_mode"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Should the fan blow more or less?",
+        "criteria": {
+          "up": "more air, stronger แรงขึ้น",
+          "down": "less air, weaker เบาลง"
+        }
+      }
+    },
+    "level": {
+      "controls": [
+        "seat_vent_driver",
+        "seat_vent_passenger"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Which level does the command ask for?",
+        "criteria": {
+          "off": "turn it off ปิด",
+          "low": "low level ระดับต่ำ เบา",
+          "medium": "medium level ระดับกลาง",
+          "high": "high level ระดับสูง แรง"
+        }
+      }
+    },
+    "switch": {
+      "controls": [
+        "drl",
+        "wireless_charging"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Should the feature be turned on or off?",
+        "criteria": {
+          "on": "turn it on or enable it",
+          "off": "turn it off or disable it"
+        }
+      }
+    },
+    "media_action": {
+      "controls": [
+        "media"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "What should the music player do?",
+        "criteria": {
+          "play": "play or resume เล่น",
+          "pause": "pause or stop หยุด",
+          "next": "next track ถัดไป",
+          "previous": "previous track ก่อนหน้า",
+          "volume_up": "louder เพิ่มเสียง",
+          "volume_down": "quieter ลดเสียง",
+          "mute": "mute ปิดเสียง"
+        }
+      }
+    },
+    "app": {
+      "controls": [
+        "open_app"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Which app should open?",
+        "criteria": {
+          "carplay": "Apple CarPlay คาร์เพลย์",
+          "android_auto": "Android Auto แอนดรอยด์ออโต้"
+        }
+      }
+    }
+  }
+}

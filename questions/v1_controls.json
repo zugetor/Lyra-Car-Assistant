@@ -1,0 +1,88 @@
+{
+  "_comment": "v1: 11 controls + none. Climate options shown as aircon / aircon_temp / aircon_fan (label_to_key maps back). Thai hints in option text; the on/off and OPEN/CLOSE/STOP questions stay English.",
+  "control": {
+    "type": "choice",
+    "instructions": "Which car control does this voice command operate?",
+    "criteria": {
+      "aircon": "AC on/off/auto แอร์",
+      "aircon_temp": "temperature องศา",
+      "aircon_fan": "fan speed พัดลม ลม",
+      "windows_all": "windows กระจก",
+      "tailgate": "tailgate trunk ฝาท้าย",
+      "sunroof": "sunroof ซันรูฟ หลังคา",
+      "sunshade": "sun shade ม่าน",
+      "seat_vent_driver": "driver seat vent ระบายอากาศคนขับ",
+      "seat_vent_passenger": "passenger seat vent ระบายอากาศผู้โดยสาร",
+      "drl": "daytime lights ไฟเดย์ไลท์",
+      "wireless_charging": "wireless charger ชาร์จไร้สาย",
+      "none": "other: music, calls, navigation เพลง"
+    }
+  },
+  "payloads": {
+    "motion": {
+      "controls": [
+        "windows_all",
+        "tailgate",
+        "sunroof",
+        "sunshade"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "What should the part do?",
+        "criteria": {
+          "OPEN": "open it",
+          "CLOSE": "close it",
+          "STOP": "stop moving"
+        }
+      }
+    },
+    "climate_mode": {
+      "controls": [
+        "climate/mode"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "What should the air conditioner do?",
+        "criteria": {
+          "auto": "turn on or auto เปิด ออโต้",
+          "off": "turn off ปิด"
+        }
+      }
+    },
+    "level": {
+      "controls": [
+        "seat_vent_driver",
+        "seat_vent_passenger"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Which level does the command ask for?",
+        "criteria": {
+          "off": "turn it off ปิด",
+          "low": "low level ระดับต่ำ เบา",
+          "medium": "medium level ระดับกลาง",
+          "high": "high level ระดับสูง แรง"
+        }
+      }
+    },
+    "switch": {
+      "controls": [
+        "drl",
+        "wireless_charging"
+      ],
+      "question": {
+        "type": "choice",
+        "instructions": "Should the feature be turned on or off?",
+        "criteria": {
+          "on": "turn it on or enable it",
+          "off": "turn it off or disable it"
+        }
+      }
+    }
+  },
+  "label_to_key": {
+    "aircon": "climate/mode",
+    "aircon_temp": "climate/temperature",
+    "aircon_fan": "climate/fan_mode"
+  }
+}

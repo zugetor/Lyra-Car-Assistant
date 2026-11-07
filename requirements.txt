@@ -1,0 +1,16 @@
+# step0_download.py, step1_prune_vocab.py, check_step1.py
+tokenizers>=0.20
+numpy
+pyarrow
+huggingface_hub
+psutil
+
+# eval_laya.py (runs the Laya decision model)
+torch>=2.4
+transformers>=5.0    # 4.x misreads the encoder's rope_parameters (wrong RoPE theta, no error)
+laya>=0.4.28
+
+# step3_export_onnx.py (ONNX export + INT8); onnxruntime has no Python 3.15 wheel yet, use 3.11-3.14
+onnx
+onnxruntime; python_version < "3.15"
+onnxscript

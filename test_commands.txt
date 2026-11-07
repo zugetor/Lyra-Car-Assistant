@@ -1,0 +1,141 @@
+# Commands check_step1.py requires to tokenize exactly as with the original tokenizer.
+# One command per line (Thai / English); lines starting with # are comments.
+
+# --- Climate mode (climate/mode: off, auto)
+เปิดแอร์
+ตั้งแอร์เป็นออโต้
+ปิดแอร์
+Turn on the climate
+Set the climate to auto
+Turn off the AC
+
+# --- Climate temperature (climate/temperature: 17-33 °C)
+เปิดแอร์ 23 องศา
+ตั้งอุณหภูมิ 25°
+ปรับแอร์เป็น 17 องศา
+Turn on air conditioner to 21 degrees
+Set the temperature to 33 degrees Celsius
+Make it 25°C
+
+# --- Climate fan (climate/fan_mode: 0-7)
+เปิดพัดลมระดับ 3
+ลดความแรงลมเหลือ 1
+ลดแอร์ลงหน่อย หนาวแล้ว
+Set fan speed to 3
+Fan level 7
+set the fan to level 3
+
+# --- Windows (windows_all: OPEN, CLOSE, STOP)
+เปิดกระจกทุกบาน
+ปิดกระจกทั้งหมด
+หยุดกระจก
+แง้มกระจกข้างหน่อย
+เปิดกระจกฝั่งคนขับ
+Open all windows
+Close all the windows
+Stop the windows
+Open driver window
+
+# --- Tailgate (tailgate: OPEN, CLOSE, STOP)
+เปิดฝาท้าย
+ปิดประตูท้าย
+หยุดฝาท้าย
+Open the tailgate
+Close the trunk
+Stop the tailgate
+
+# --- Sunroof (sunroof: OPEN, CLOSE, STOP)
+เปิดซันรูฟ
+ปิดหลังคา
+หยุดซันรูฟ
+Open the sunroof
+Close the sunroof
+Stop the sunroof
+
+# --- Sunshade (sunshade: OPEN, CLOSE, STOP)
+เปิดม่านบังแดดหลังคา
+ปิดม่านหลังคา
+Open the sunshade
+Close the sun shade
+
+# --- Seat ventilation (seat_vent_driver / seat_vent_passenger: off, low, medium, high)
+เปิดเบาะระบายอากาศคนขับระดับกลาง
+เปิดพัดลมเบาะผู้โดยสาร
+Turn on driver seat ventilation medium
+Passenger seat cooling high
+
+# --- Daytime running lights (drl: on / off)
+เปิดไฟเดย์ไลท์
+ปิดไฟวิ่งกลางวัน
+Turn on daytime running lights
+Turn off the DRL
+
+# --- Wireless phone charger (wireless_charging: 1 / 0)
+เปิดที่ชาร์จมือถือไร้สาย
+ปิดแท่นชาร์จไร้สาย
+Turn on wireless charging
+Turn off the phone charger
+
+# --- Media / driving mode / misc
+ปิดม่านหลังคา
+เพิ่มเสียงเพลง
+ปิดเสียง
+เพลงถัดไป
+เปลี่ยนเป็นโหมดสปอร์ต
+Mute audio
+Mute music
+Turn on sport mode
+Cruise Control
+I'm cold, warm it up a bit
+
+# --- Common car words, mixed with Thai
+เชื่อมต่อ CarPlay
+เปิด Android Auto
+เปิดบลูทูธ
+ต่อ WiFi
+เปิดเพลง
+แบตเหลือเท่าไหร่
+กระแสชาร์จเท่าไหร่
+ชาร์จ AC
+ชาร์จเร็ว DC
+Connect Apple CarPlay
+Start Android Auto
+Turn on Bluetooth
+Connect to Wi-Fi
+Play music
+What's the battery level?
+Show the charging current
+Start AC charging
+DC fast charging at 150 kW
+
+# --- Temperature warmer / cooler (climate/temperature, no number)
+ฉันหนาว
+หนาวจัง เพิ่มอุณหภูมิหน่อย
+ร้อนมาก ลดอุณหภูมิลง
+I'm cold
+It's too hot in here
+Make it a bit cooler
+
+# --- Fan up / down (climate/fan_mode, no number)
+เพิ่มลมแอร์
+ลดลมแอร์ลง
+Turn the fan up
+Less fan please
+
+# --- Media (media: play, pause, next, previous, volume_up, volume_down, mute)
+เล่นเพลงต่อ
+หยุดเพลง
+ย้อนกลับเพลงก่อนหน้า
+เพิ่มเสียง
+ลดเสียงลง
+Pause the music
+Previous song
+Volume up
+Turn the volume down
+
+# --- Open app (open_app: carplay, android_auto)
+เปิด CarPlay
+เปิดแอนดรอยด์ออโต้
+Open CarPlay
+Launch Android Auto
+Start Apple CarPlay

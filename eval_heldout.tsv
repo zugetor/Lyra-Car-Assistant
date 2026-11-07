@@ -1,0 +1,53 @@
+# text	control	payload        (held-out paraphrases: written with other words than the option hints, never used to tune questions)
+ช่วยเปิดแอร์ให้หน่อย ร้อนจัง	climate/mode	auto
+ปิดแอร์ได้เลย	climate/mode	off
+ขอแอร์ 24 องศา	climate/temperature	24
+ลมแรงไป ลดเหลือ 2	climate/fan_mode	2
+เปิดหน้าต่างทั้งหมดเลย	windows_all	OPEN
+ปิดกระจกให้หน่อย	windows_all	CLOSE
+เปิดท้ายรถ	tailgate	OPEN
+ปิดฝากระโปรงท้าย	tailgate	CLOSE
+เปิดหลังคาซันรูฟ	sunroof	OPEN
+เลื่อนม่านหลังคาออก	sunshade	OPEN
+เปิดเบาะเย็นฝั่งคนขับระดับต่ำ	seat_vent_driver	low
+ปิดไฟกลางวัน	drl	off
+ปิดชาร์จไร้สาย	wireless_charging	off
+โทรหาแม่	none	-
+วันนี้ฝนจะตกไหม	none	-
+I'm hot, turn on the AC	climate/mode	auto
+Switch the air con off	climate/mode	off
+Make it warmer, 26 degrees	climate/temperature	26
+Turn the blower down to 2	climate/fan_mode	2
+Roll down all the windows	windows_all	OPEN
+Roll up the windows	windows_all	CLOSE
+Pop the trunk	tailgate	OPEN
+Shut the boot	tailgate	CLOSE
+Slide the moonroof open	sunroof	OPEN
+Pull the roof blind closed	sunshade	CLOSE
+Cool the passenger seat, low	seat_vent_passenger	low
+Switch off the DRLs	drl	off
+Stop wireless charging my phone	wireless_charging	off
+Play some jazz	media	play
+What's the weather tomorrow?	none	-
+เย็นไปแล้ว ปรับให้อุ่นหน่อย	climate/temperature	warmer
+ร้อนอบอ้าว ขอเย็นกว่านี้	climate/temperature	cooler
+I'm freezing	climate/temperature	warmer
+I'm sweating, cool it down	climate/temperature	cooler
+ลมเบาไป เร่งพัดลมหน่อย	climate/fan_mode	up
+Blow harder	climate/fan_mode	up
+ขอฟังเพลงหน่อย	media	play
+พักเพลงก่อน	media	pause
+ข้ามเพลงนี้	media	next
+กลับไปเพลงที่แล้ว	media	previous
+เสียงดังขึ้นอีก	media	volume_up
+เบาเสียงหน่อย	media	volume_down
+Resume playback	media	play
+Stop the song	media	pause
+Skip this song	media	next
+Go back one track	media	previous
+Louder please	media	volume_up
+It's too loud	media	volume_down
+ขอใช้คาร์เพลย์	open_app	carplay
+เข้าแอนดรอยด์ออโต้	open_app	android_auto
+Bring up CarPlay	open_app	carplay
+Switch to Android Auto	open_app	android_auto

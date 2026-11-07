@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
+
+# downloads, intermediates and build outputs (re-create with ./run.sh)
+cache/
+laya_pruned_enth/
+laya_finetuned_enth/
+data/
+export/
+
+# never commit model files, wherever they end up
+*.safetensors
+*.onnx
+*.onnx.data
+*.npy
+
+# in-browser page: downloaded runtime and generated reference (re-create with the scripts in web_browser/)
+web_browser/vendor/
+web_browser/reference.json

@@ -1,0 +1,92 @@
+# text	control	payload        (labeled set for eval_laya.py; tab-separated; '-' = no payload)
+# payload: OPEN/CLOSE/STOP, auto/off, off/low/medium/high, on/off (= 1/0), a number, warmer/cooler, up/down,
+#          play/pause/next/previous/volume_up/volume_down/mute, carplay/android_auto
+เปิดแอร์	climate/mode	auto
+ตั้งแอร์เป็นออโต้	climate/mode	auto
+ปิดแอร์	climate/mode	off
+Turn on the climate	climate/mode	auto
+Set the climate to auto	climate/mode	auto
+Turn off the AC	climate/mode	off
+เปิดแอร์ 23 องศา	climate/temperature	23
+ตั้งอุณหภูมิ 25°	climate/temperature	25
+ปรับแอร์เป็น 17 องศา	climate/temperature	17
+Turn on air conditioner to 21 degrees	climate/temperature	21
+Set the temperature to 33 degrees Celsius	climate/temperature	33
+Make it 25°C	climate/temperature	25
+เปิดพัดลมระดับ 3	climate/fan_mode	3
+ลดความแรงลมเหลือ 1	climate/fan_mode	1
+Set fan speed to 3	climate/fan_mode	3
+Fan level 7	climate/fan_mode	7
+set the fan to level 3	climate/fan_mode	3
+เปิดกระจกทุกบาน	windows_all	OPEN
+ปิดกระจกทั้งหมด	windows_all	CLOSE
+หยุดกระจก	windows_all	STOP
+Open all windows	windows_all	OPEN
+Close all the windows	windows_all	CLOSE
+Stop the windows	windows_all	STOP
+เปิดฝาท้าย	tailgate	OPEN
+ปิดประตูท้าย	tailgate	CLOSE
+หยุดฝาท้าย	tailgate	STOP
+Open the tailgate	tailgate	OPEN
+Close the trunk	tailgate	CLOSE
+Stop the tailgate	tailgate	STOP
+เปิดซันรูฟ	sunroof	OPEN
+ปิดซันรูฟ	sunroof	CLOSE
+หยุดซันรูฟ	sunroof	STOP
+Open the sunroof	sunroof	OPEN
+Close the sunroof	sunroof	CLOSE
+Stop the sunroof	sunroof	STOP
+เปิดม่านบังแดดหลังคา	sunshade	OPEN
+ปิดม่านหลังคา	sunshade	CLOSE
+Open the sunshade	sunshade	OPEN
+Close the sun shade	sunshade	CLOSE
+เปิดเบาะระบายอากาศคนขับระดับกลาง	seat_vent_driver	medium
+เปิดพัดลมเบาะผู้โดยสารระดับสูง	seat_vent_passenger	high
+ปิดเบาะระบายอากาศผู้โดยสาร	seat_vent_passenger	off
+Turn on driver seat ventilation medium	seat_vent_driver	medium
+Passenger seat cooling high	seat_vent_passenger	high
+Turn off the passenger seat ventilation	seat_vent_passenger	off
+เปิดไฟเดย์ไลท์	drl	on
+ปิดไฟวิ่งกลางวัน	drl	off
+Turn on daytime running lights	drl	on
+Turn off the DRL	drl	off
+เปิดที่ชาร์จมือถือไร้สาย	wireless_charging	on
+ปิดแท่นชาร์จไร้สาย	wireless_charging	off
+Turn on wireless charging	wireless_charging	on
+Turn off the phone charger	wireless_charging	off
+เปิดเพลง	media	play
+เพลงถัดไป	media	next
+แบตเหลือเท่าไหร่	none	-
+นำทางกลับบ้าน	none	-
+Play music	media	play
+Next track	media	next
+What's the battery level?	none	-
+Navigate home	none	-
+Call mom	none	-
+ฉันหนาว	climate/temperature	warmer
+หนาวจัง เพิ่มอุณหภูมิหน่อย	climate/temperature	warmer
+ร้อนมาก ลดอุณหภูมิลง	climate/temperature	cooler
+I'm cold	climate/temperature	warmer
+It's too hot in here	climate/temperature	cooler
+Make it a bit cooler	climate/temperature	cooler
+เพิ่มลมแอร์	climate/fan_mode	up
+ลดลมแอร์ลง	climate/fan_mode	down
+Turn the fan up	climate/fan_mode	up
+Less fan please	climate/fan_mode	down
+เล่นเพลงต่อ	media	play
+หยุดเพลง	media	pause
+ย้อนกลับเพลงก่อนหน้า	media	previous
+เพิ่มเสียง	media	volume_up
+ลดเสียงลง	media	volume_down
+ปิดเสียง	media	mute
+Pause the music	media	pause
+Previous song	media	previous
+Volume up	media	volume_up
+Turn the volume down	media	volume_down
+Mute audio	media	mute
+เปิด CarPlay	open_app	carplay
+เปิดแอนดรอยด์ออโต้	open_app	android_auto
+เปิด Android Auto	open_app	android_auto
+Open CarPlay	open_app	carplay
+Launch Android Auto	open_app	android_auto
+Start Apple CarPlay	open_app	carplay

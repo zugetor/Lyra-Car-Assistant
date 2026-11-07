@@ -1,0 +1,52 @@
+# Text whose English/ASCII tokens step1_prune_vocab.py always keeps, whatever their
+# frequency in wikitext. Each line is also kept lower-cased and upper-cased.
+# Thai tokens are always kept, so only English/ASCII text needs to go here.
+# One phrase per line; lines starting with # are comments.
+
+# --- Laya prompt pieces (laya builds "<type> question: <instructions>" + options)
+choice question: score question: noul question: level 0: level 1: level 2:
+false: no, the statement does not hold
+true: yes, the statement holds
+Which option fits? Which car system? What action? What value? body: text: command:
+
+# --- Control keys
+climate/mode climate/temperature climate/fan_mode
+windows_all tailgate sunroof sunshade
+seat_vent_driver seat_vent_passenger
+drl wireless_charging
+aircon aircon_temp aircon_fan media open_app
+
+# --- Payloads
+off auto on 0 1 2 3 4 5 6 7 OPEN CLOSE STOP low medium high on / off 1 / 0
+17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 °C 17–33 0–7
+warmer cooler up down play pause next previous volume_up volume_down mute carplay android_auto
+
+# --- English commands per control
+Turn on the climate. Set the climate to auto. Turn off the climate. Turn on the air conditioner.
+Set the temperature to 22 degrees Celsius. Make it 25°C. Warmer please. Cooler please.
+Set fan speed to 3. Fan level 7. Increase the fan. Decrease the fan. Turn the fan off.
+Open all windows. Close all the windows. Stop the windows. Open the driver window. Close the passenger window.
+Open the tailgate. Close the tailgate. Stop the tailgate. Open the trunk. Close the trunk.
+Open the sunroof. Close the sunroof. Stop the sunroof. Vent the sunroof.
+Open the sunshade. Close the sun shade. Stop the sunshade.
+Turn on driver seat ventilation. Passenger seat cooling high. Ventilated seats low. Turn off seat ventilation.
+Turn on daytime running lights. Turn off the DRL. Daytime lights on.
+Turn on wireless charging. Turn off the phone charger. Wireless phone charger on.
+I'm cold. I'm hot. I'm freezing. It's too hot. Make it warmer. Make it cooler. Warm it up. Cool it down.
+Turn the fan up. Turn the fan down. More air. Less air. Blow harder.
+Play music. Pause. Resume. Stop the music. Skip this song. Next song. Previous song. Go back one track.
+Louder. Quieter. Volume up. Volume down. Turn it up. Turn it down. Mute. Unmute.
+Open CarPlay. Launch Android Auto. Start Apple CarPlay. Switch to Android Auto. Bring up CarPlay.
+
+# --- Common car words
+CarPlay Apple CarPlay Android Auto Bluetooth WiFi Wi-Fi wifi hotspot USB
+music song playlist radio FM AM podcast Spotify YouTube volume mute unmute next track previous track
+battery battery level state of charge SOC range km miles EV hybrid
+charging charger charging current charging power charging port AC DC AC charging DC fast charging
+kW kWh amps A V volt voltage V2L regen regenerative braking
+navigation GPS map route home work parking camera 360 camera dashcam
+Navigate home. Navigate to work. Call mom. Make a phone call. Answer the call. Hang up.
+headlights high beam low beam fog lights hazard lights wipers mirrors fold mirrors
+door lock unlock horn tire pressure TPMS cruise control adaptive cruise ACC lane keep
+sport mode eco mode normal mode snow mode driving mode steering mode
+screen display brightness dark mode light mode
