@@ -25,8 +25,14 @@ Then 8-bit quantization without calibration data. Two kinds (--quant):
 Both graphs are checked against torch on real questions of different lengths and option counts
 before anything is written as final.
 
+The weights are then moved out of the graph into laya.onnx.data (--single-file keeps one file).
+With the weights inside the .onnx, ONNX Runtime reads the whole protobuf and copies every weight into
+its own tensors: the session alone takes ~400 MB of private memory for a 212 MB file. With external
+data it maps the weight file instead and the session takes ~50 MB (macOS), at the same speed.
+
 Output bundle (loads with laya.load("export", backend="onnx", onnx_path="export/laya.onnx")):
-  export/laya.onnx                   8-bit model
+  export/laya.onnx                   graph (~1 MB)
+  export/laya.onnx.data              8-bit weights (~211 MB), memory-mapped by ONNX Runtime
   export/tokenizer/, rl_agent_config.json, encoder/config.json, config.json
   export/car_questions.json          the questions the runtime asks
   export/finetune_summary.json       fitted confidence thresholds (ask again below them)
@@ -38,6 +44,7 @@ Usage:
   python step3_export_onnx.py
   python step3_export_onnx.py --src laya_pruned_enth --keep-fp32
   python step3_export_onnx.py --quant dynamic         # the older activation-quantized INT8
+  python step3_export_onnx.py --single-file           # weights inside laya.onnx (more RAM at load)
 """
 import argparse
 import json
@@ -118,10 +125,13 @@ def main():
     ap.add_argument("--out", default=EXPORT_DIR)
     ap.add_argument("--opset", type=int, default=18)
     ap.add_argument("--keep-fp32", action="store_true", help="keep export/laya_fp32.onnx (~800 MB)")
+    ap.add_argument("--single-file", action="store_true",
+                    help="keep the weights inside laya.onnx instead of laya.onnx.data (uses ~2x the RAM at load)")
     ap.add_argument("--quant", default="weight8", choices=["weight8", "dynamic"],
                     help="weight8: int8 weights, float math (default); dynamic: int8 activations too")
     args = ap.parse_args()
 
+    import onnx
     import onnxruntime as ort
     from laya.train import load_checkpoint
     from onnxruntime.quantization import QuantType, quantize_dynamic
@@ -184,6 +194,16 @@ def main():
         quantize_dynamic(tmp, int8_path, weight_type=QuantType.QInt8, per_channel=True, op_types_to_quantize=["Gather"])
         os.remove(tmp)
     print(f"    {os.path.getsize(int8_path) / MB:.0f} MB in {time.time() - t0:.0f}s")
+    data_path = int8_path + ".data"
+    if os.path.exists(data_path):
+        os.remove(data_path)          # onnx appends to an existing data file
+    if not args.single_file:
+        print("[*] Moving the weights to laya.onnx.data (memory-mapped at load) ...")
+        m = onnx.load(int8_path)
+        onnx.save_model(m, int8_path, save_as_external_data=True, all_tensors_to_one_file=True,
+                        location=os.path.basename(data_path), size_threshold=1024)
+        os.chmod(data_path, 0o644)    # onnx creates it owner-only; a web server may run as another user
+        del m
     levels = {}
     for name, lvl in (("basic", ort.GraphOptimizationLevel.ORT_ENABLE_BASIC), ("all", ort.GraphOptimizationLevel.ORT_ENABLE_ALL)):
         so_q = ort.SessionOptions()
@@ -205,13 +225,15 @@ def main():
     if not args.keep_fp32:
         os.remove(fp32_path)
 
+    files = [p for p in (int8_path, data_path) if os.path.exists(p)]
     report = {"src": os.path.relpath(args.src), "opset": args.opset, "quant": args.quant,
-              "onnx_mb": round(os.path.getsize(int8_path) / MB, 1),
+              "files": [os.path.basename(p) for p in files],
+              "onnx_mb": round(sum(os.path.getsize(p) for p in files) / MB, 1),
               "fp32_vs_torch_max_logit_diff": w32, "quant_vs_torch_max_logit_diff": w8, "quant_flips": f8,
               "quant_drift_between_ort_levels": drift}
     with open(os.path.join(args.out, "export_report.json"), "w") as f:
         json.dump(report, f, indent=2)
-    print(f"[+] {os.path.relpath(int8_path)} ({args.quant}): {report['onnx_mb']} MB. Bundle in {os.path.relpath(args.out)}/")
+    print(f"[+] {' + '.join(report['files'])} ({args.quant}): {report['onnx_mb']} MB. Bundle in {os.path.relpath(args.out)}/")
     return 0
 
 

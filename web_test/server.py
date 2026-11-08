@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-web_test/server.py  --  try the INT8 ONNX model in a browser
+web_test/server.py  --  try the 8-bit ONNX model in a browser
 
 Type (or say) a Thai / English command and see what the car would do: the action, both
 confidences against the ask-again thresholds, latency per call, and the tokens. Labeled presets

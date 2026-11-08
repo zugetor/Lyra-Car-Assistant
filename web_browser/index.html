@@ -136,7 +136,7 @@ ort.env.wasm.numThreads = threads;
 
 function progress(stage, frac = 0, bytes = 0) {
   const text = {tokenizer: "Loading the tokenizer…", session: "Starting ONNX Runtime Web…",
-                model: `Downloading the INT8 model… ${(bytes / 2 ** 20).toFixed(0)} MB`}[stage];
+                model: `Downloading the 8-bit model… ${(bytes / 2 ** 20).toFixed(0)} MB`}[stage];
   $("#loadText").textContent = text;
   $("#loadBar").style.width = (stage === "model" ? 10 + frac * 80 : stage === "session" ? 95 : 5) + "%";
 }

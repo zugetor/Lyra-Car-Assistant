@@ -176,27 +176,39 @@ export class CarAssistant {
       getJson("rl_agent_config.json"), getJson("finetune_summary.json", true)]);
     const tok = new GemmaBPE(tj, tcfg);
 
+    // laya.onnx is the graph, laya.onnx.data holds the weights. An export made with --single-file has no
+    // .data file; then laya.onnx carries everything and the 404 is expected.
     onProgress("model", 0);
-    const r = await fetch(base + "laya.onnx");
-    if (!r.ok) throw new Error(`${base}laya.onnx: HTTP ${r.status}`);
-    const total = Number(r.headers.get("Content-Length")) || 0;
-    const reader = r.body.getReader();
-    const chunks = [];
+    const [rg, rd] = await Promise.all([fetch(base + "laya.onnx"), fetch(base + "laya.onnx.data")]);
+    if (!rg.ok) throw new Error(`${base}laya.onnx: HTTP ${rg.status}`);
+    const parts = rd.ok ? [rg, rd] : [rg];
+    const total = parts.reduce((n, r) => n + (Number(r.headers.get("Content-Length")) || 0), 0);
     let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      got += value.length;
-      onProgress("model", total ? got / total : 0, got);
-    }
-    const bytes = new Uint8Array(got);
-    let off = 0;
-    for (const c of chunks) { bytes.set(c, off); off += c.length; }
+    const readAll = async (r) => {
+      const reader = r.body.getReader();
+      const chunks = [];
+      let size = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        size += value.length;
+        got += value.length;
+        onProgress("model", total ? got / total : 0, got);
+      }
+      const bytes = new Uint8Array(size);
+      let off = 0;
+      for (const c of chunks) { bytes.set(c, off); off += c.length; }
+      return bytes;
+    };
+    const graph = await readAll(rg);
+    const data = rd.ok ? await readAll(rd) : null;
 
     onProgress("session");
     const t0 = performance.now();
-    const session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+    const opts = { executionProviders: ["wasm"], graphOptimizationLevel: "all" };
+    if (data) opts.externalData = [{ path: "laya.onnx.data", data }];
+    const session = await ort.InferenceSession.create(graph, opts);
     return new CarAssistant({ tok, qcfg, rl, summary, session, modelBytes: got, gate,
                               sessionMs: performance.now() - t0 });
   }

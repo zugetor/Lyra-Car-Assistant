@@ -40,7 +40,7 @@ No model yet? Build the whole thing first (below), then come back.
 .venv/bin/python gen_train_data.py                      # data/train.jsonl + data/val.jsonl
 .venv/bin/python step2_finetune.py                      # ~1 h on Apple MPS -> laya_finetuned_enth/
 .venv/bin/python eval_laya.py --models pruned finetuned # before vs after
-.venv/bin/python step3_export_onnx.py                   # export/laya.onnx (8-bit weights) + bundle
+.venv/bin/python step3_export_onnx.py                   # export/laya.onnx + laya.onnx.data (8-bit) + bundle
 .venv/bin/python eval_laya.py --models finetuned onnx   # torch vs ONNX
 .venv/bin/python web_browser/make_reference.py          # Python answers for the page's ?selftest
 .venv/bin/python web_test/server.py                     # http://127.0.0.1:8080 — same page, Python runs the model
@@ -136,9 +136,11 @@ result is the same size as the pruned model, 393 MB in FP16.
 — and the math stays in float. `--quant dynamic` is onnxruntime's `quantize_dynamic`, which also squeezes
 activations into int8 at run time. That one is kept only for comparison; see the results.
 
-`export/` ends up holding `laya.onnx`, the tokenizer, `rl_agent_config.json` (calibrated temperatures),
-`finetune_summary.json` (laya's ask-again thresholds), `car_questions.json` and `export_report.json`. Add
-`--keep-fp32` to keep the FP32 graph as well.
+`export/` ends up holding `laya.onnx` (the graph, ~1 MB), `laya.onnx.data` (the 8-bit weights, ~211 MB), the
+tokenizer, `rl_agent_config.json` (calibrated temperatures), `finetune_summary.json` (laya's ask-again thresholds),
+`car_questions.json` and `export_report.json`. Keep the two model files side by side: `laya.onnx` points at
+`laya.onnx.data` by name. ONNX Runtime maps the weight file instead of copying it, which halves the RAM (see the
+results). `--single-file` puts everything back into one `laya.onnx`; `--keep-fp32` keeps the FP32 graph as well.
 
 ### Running in the browser
 
@@ -149,7 +151,8 @@ activations into int8 at run time. That one is kept only for comparison; see the
 - **Prompt** — laya's sequential layout, `[CLS] choice question: <instructions> [SEP] [MASK] opt0 [MASK] opt1 …
   [SEP] <command> [SEP]`, same 256-token head budget, same 48-token cap per option.
 - **Model** — ONNX Runtime Web 1.30.0 on WASM. Four threads when the page is cross-origin isolated; `serve.py` sends
-  the headers that allow it. Any other static server works too, just single-threaded.
+  the headers that allow it. Any other static server works too, just single-threaded. The page fetches `laya.onnx`
+  and `laya.onnx.data` and hands the weights over as `externalData`; a `--single-file` export loads too.
 - **Runtime** — the same rules as `runtime.py`.
 
 Want proof it matches Python? Open http://127.0.0.1:8081/web_browser/?selftest. It compares the page against
@@ -248,7 +251,6 @@ So neither gate is a safety net yet. Mistakes like these get fixed with training
 | unseen control / whole command | 96.2% / 94.2% | 96.2% / 94.2% | 96.2% / 94.2% | 96.2% / 94.2% |
 | browser vs Python, 141 eval commands | — | — | **141 / 141 same** | 6 differ |
 | latency, runtime path, native CPU | ~78 ms | ~121 ms | ~213 ms | ~101 ms |
-| process RAM after load (incl. tokenizer) | +1.1 GB | — | +650 MB | +660 MB |
 
 Dynamic INT8 started out as the default. It lost the job because its answers depend on which runtime you ask.
 Quantizing activations on the fly makes the low-ranked logits swing: one option on one control question came out as
@@ -259,9 +261,26 @@ survived. Margins, confidences and 6 of 141 browser answers didn't.
 four, because MatMulNBits does its math in float. Measure on the device before worrying; if it is too slow,
 `accuracy_level=4` (int8 math inside MatMulNBits) is the next thing to try.
 
-RAM is high across the board. The ONNX Runtime session alone takes ~400 MB for a ~210 MB file, and the tokenizer
-adds up to ~190 MB while it loads. Converting to the ORT format didn't help on macOS. That one has to be measured
-with ONNX Runtime Mobile on the real thing.
+RAM, the whole Python runtime (`runtime.py`: tokenizer + session), 8-bit weights, fresh process:
+
+| | weights inside `laya.onnx` | weights in `laya.onnx.data` (default) |
+| :--- | ---: | ---: |
+| private RAM after load | +640 MB | **+300 MB** |
+| private RAM after 24 commands | +660 MB | **+330 MB** |
+| resident (RSS) after 24 commands | +830 MB | +620 MB |
+| peak RSS of the process | 880 MB | 670 MB |
+
+With the weights inside the graph, ONNX Runtime reads the whole protobuf into memory and then copies every weight
+into its own buffers. With a separate weight file it maps the file instead. Speed is the same. Mapped pages count toward RSS once they're touched, but they're clean pages of a file on
+disk that the OS can drop and read again. They aren't private memory.
+
+Of the ~300 MB that's left, ~160 MB is torch + transformers, which `laya.load` imports even for the ONNX backend.
+The tokenizer takes ~90 MB and the ONNX Runtime session ~50 MB. A device build has no torch, so expect roughly
+140 MB private plus the 211 MB mapped file. Converting to the ORT format didn't help on macOS. The real number has
+to come from ONNX Runtime Mobile on the real thing.
+
+The browser gains as well. ONNX Runtime Web's WASM memory ends at 269 MB with the separate weight file, against 550 MB
+with one file, and WASM memory never shrinks once it has grown.
 
 In the browser, `?selftest` reports 233 / 233 token sequences, 216 / 216 prompts and 141 / 141 answers identical to
 Python, with probabilities at most 0.0001 apart. Same 96.2% / 94.2% on the unseen set, at a median of ~455 ms per
@@ -317,6 +336,8 @@ taught us. Numbers marked "with Chinese" were measured before Chinese was remove
 - The tokenizer splits on added tokens (`<bos>`, `\n`, runs of tabs …) before normalizing, and every piece in between
   gets its own `▁`. A port that skips this goes wrong on text with newlines.
 - ONNX Runtime Web `import()`s its `.mjs` from `env.wasm.wasmPaths`. Make that an absolute URL, not `vendor/`.
+- Weights inside the `.onnx` cost ~2x their size in RAM at load. Keep them in a separate file
+  (`save_as_external_data=True`). ONNX Runtime Web won't find that file by itself: pass it as `externalData`.
 
 ## Next
 
@@ -348,7 +369,7 @@ lyra-car-assistant/
   laya_pruned_enth/      # git-ignored: pruned checkpoint
   data/                  # git-ignored: train.jsonl, val.jsonl (re-create with gen_train_data.py)
   laya_finetuned_enth/   # git-ignored: fine-tuned checkpoint + finetune_summary.json
-  export/                # git-ignored: laya.onnx (8-bit weights) + tokenizer + configs — the on-device bundle
+  export/                # git-ignored: laya.onnx + laya.onnx.data (8-bit) + tokenizer + configs — the on-device bundle
   web_browser/vendor/    # git-ignored: onnxruntime-web (fetch_vendor.py); web_browser/reference.json too
 ```
 

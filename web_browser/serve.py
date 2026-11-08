@@ -27,7 +27,7 @@ ALLOWED_FILES = ("/eval_commands.tsv", "/eval_heldout.tsv")
 
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".mjs": "text/javascript",
-                      ".js": "text/javascript", ".wasm": "application/wasm", ".onnx": "application/octet-stream",
+                      ".js": "text/javascript", ".wasm": "application/wasm", ".onnx": "application/octet-stream", ".data": "application/octet-stream",
                       ".json": "application/json", ".tsv": "text/tab-separated-values; charset=utf-8"}
 
     def end_headers(self):

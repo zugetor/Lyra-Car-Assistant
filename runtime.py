@@ -61,7 +61,7 @@ class CarAssistant:
             self.folder = os.path.dirname(os.path.abspath(path))
             self.agent = laya.load(self.folder, backend="onnx", onnx_path=path)
             self.backend = "ONNX Runtime, 8-bit" if "fp32" not in os.path.basename(path) else "ONNX Runtime, FP32"
-            self.model_mb = os.path.getsize(path) / 2**20
+            self.model_mb = sum(os.path.getsize(f) for f in (path, path + ".data") if os.path.exists(f)) / 2**20
         else:
             self.folder = path
             self.agent = laya.load(path, device="cpu")
