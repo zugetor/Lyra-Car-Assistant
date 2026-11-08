@@ -1,0 +1,78 @@
+/* design tokens · theme: lumen · night foundry (dark only)
+ * the same system as gh.zugetor.com, plus status colours for the demo and a Thai fallback for body text
+ */
+:root {
+  color-scheme: dark;
+
+  /* night foundry */
+  --color-paper:      oklch(13% 0.014 265);
+  --color-paper-2:    oklch(16.5% 0.016 265);
+  --color-paper-3:    oklch(20% 0.018 265);
+  --color-rule:       oklch(26% 0.016 265);
+  --color-rule-2:     oklch(36% 0.016 265);
+  --color-muted:      oklch(66% 0.012 262);
+  --color-ink-2:      oklch(84% 0.010 262);
+  --color-ink:        oklch(96% 0.006 262);
+  --color-accent:     oklch(76% 0.17 50);
+  --color-accent-2:   oklch(70% 0.16 18);
+  --color-focus:      oklch(80% 0.16 50);
+  --color-glow:       oklch(80% 0.16 50 / 0.42);
+  --color-glow-2:     oklch(80% 0.16 50 / 0.16);
+  --color-paper-emit: oklch(76% 0.17 50 / 0.05);
+  --color-card-emit:  oklch(76% 0.17 50 / 0.05);
+  --color-card-emit-hover: oklch(76% 0.17 50 / 0.11);
+  --rule-blueprint:   oklch(96% 0.006 262 / 0.045);
+  --shadow-card:      0 24px 60px -28px oklch(4% 0.01 265 / 0.6);
+  --weight-body:      350;
+
+  /* status · ok / ask again / wrong */
+  --color-ok:      oklch(80% 0.14 155);
+  --color-ok-bg:   oklch(27% 0.045 155);
+  --color-warn:    oklch(84% 0.13 88);
+  --color-warn-bg: oklch(28% 0.045 88);
+  --color-bad:     oklch(73% 0.15 25);
+  --color-bad-bg:  oklch(27% 0.055 25);
+
+  /* type */
+  --font-display: "Instrument Serif", "Tiempos Headline", ui-serif, Georgia, serif;
+  --font-body:    "Geist", "Sukhumvit Set", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  --font-label:   "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --text-label:   0.6875rem;                                  /* 11px mono labels */
+  --text-sm:      0.875rem;
+  --text-base:    1rem;
+  --text-md:      1.125rem;
+  --text-xl:      clamp(1.75rem, 2.2vw + 1rem, 2.6rem);       /* project title */
+  --text-stat:    clamp(1.75rem, 3vw + 0.9rem, 3.5rem);       /* stat numerals */
+  --text-head:    clamp(2.4rem, 4.2vw + 1rem, 4.5rem);        /* page headline */
+  --tracking-display: -0.03em;
+  --tracking-micro:   0.10em;
+
+  /* space · 4pt */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs:  0.5rem;
+  --space-sm:  0.75rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --page-gutter: clamp(1rem, 4vw, 3.5rem);
+  --page-max:    72rem;
+
+  /* shape */
+  --radius-card: 14px;
+  --radius-pill: 999px;
+  --rule-hair:   1px;
+
+  /* motion */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro:   120ms;
+  --dur-short:   220ms;
+  --dur-reveal:  320ms;
+  --dur-long:    600ms;
+  --dur-pulse:   4s;
+}

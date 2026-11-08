@@ -3,7 +3,7 @@
 web_browser/build_pages.py  --  build the static demo for GitHub Pages; the model comes from Hugging Face
 
 Writes OUT/ (default _site/) with everything the page needs except the model:
-  index.html, lyra.js, coi-sw.js        the page (coi-sw.js adds the isolation headers Pages can't send)
+  index.html, lyra.js, tokens.css, coi-sw.js   the page (coi-sw.js adds the isolation headers Pages can't send)
   vendor/                               ONNX Runtime Web, via fetch_vendor.py (SHA-256 checked)
   eval_heldout.tsv, eval_commands.tsv   the example commands
   config.js                             model = HF_REPO at HF_REVISION, kept in the browser's cache
@@ -32,7 +32,7 @@ import fetch_vendor  # noqa: E402
 
 HF_REPO = "zugetor/Lyra-Car-Assistant-enth"
 HF_REVISION = "531964c77c59ce742f32c26506b14e11a76ee0b3"
-PAGE = ["index.html", "lyra.js", "coi-sw.js"]
+PAGE = ["index.html", "lyra.js", "coi-sw.js", "tokens.css"]
 EXAMPLES = ["eval_heldout.tsv", "eval_commands.tsv"]
 MARKER = ".nojekyll"      # GitHub Pages: serve files as they are. Also marks OUT/ as ours to delete.
 
