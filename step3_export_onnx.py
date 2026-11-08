@@ -119,6 +119,26 @@ def compare(name, sess, model, batches):
     return worst, flips
 
 
+def write_bundle_files(src, out):
+    """Everything next to the graph that ONNXAgent and the runtimes read. export/ is what gets uploaded to
+    Hugging Face, so absolute paths into this checkout become relative."""
+    for name in ("rl_agent_config.json", "config.json", "finetune_summary.json"):
+        if os.path.exists(os.path.join(src, name)):
+            with open(os.path.join(src, name), encoding="utf-8") as f:
+                text = f.read().replace(HERE + os.sep, "").replace(HERE, ".")
+            with open(os.path.join(out, name), "w", encoding="utf-8") as f:
+                f.write(text)
+    for sub in ("tokenizer", "encoder"):
+        shutil.copytree(os.path.join(src, sub), os.path.join(out, sub), dirs_exist_ok=True)
+    # the fine-tuned checkpoint saves tokenizer.json pretty-printed (17 MB); compact it's 7 MB to download
+    tj = os.path.join(out, "tokenizer", "tokenizer.json")
+    with open(tj, encoding="utf-8") as f:
+        tokenizer = json.load(f)
+    with open(tj, "w", encoding="utf-8") as f:
+        json.dump(tokenizer, f, ensure_ascii=False, separators=(",", ":"))
+    shutil.copy(CAR_QUESTIONS, out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--src", default=FINETUNED_DIR, help="laya checkpoint to export (default: fine-tuned)")
@@ -215,13 +235,7 @@ def main():
     print(f"   {args.quant}: max logit change between ORT optimization levels {drift:.4f}"
           + ("  (runtime-dependent: browser / device may answer differently)" if drift > 0.05 else ""))
 
-    # files ONNXAgent reads next to the graph
-    for name in ("rl_agent_config.json", "config.json", "finetune_summary.json", "README.md"):
-        if os.path.exists(os.path.join(args.src, name)):
-            shutil.copy(os.path.join(args.src, name), args.out)
-    for sub in ("tokenizer", "encoder"):
-        shutil.copytree(os.path.join(args.src, sub), os.path.join(args.out, sub), dirs_exist_ok=True)
-    shutil.copy(CAR_QUESTIONS, args.out)
+    write_bundle_files(args.src, args.out)
     if not args.keep_fp32:
         os.remove(fp32_path)
 

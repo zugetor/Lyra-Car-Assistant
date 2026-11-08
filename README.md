@@ -17,6 +17,12 @@ that counts — that and latency/RAM on the actual hardware.
 
 ## Try it in your browser
 
+**[zugetor.github.io/lyra-car-assistant](https://zugetor.github.io/lyra-car-assistant/)** — nothing to install. The
+page pulls the model from [Hugging Face](https://huggingface.co/zugetor/Lyra-Car-Assistant-enth) (~218 MB, once;
+after that it loads from the browser's cache in under a second) and runs it in the tab.
+
+Or run the same page against your own `export/`:
+
 ```bash
 .venv/bin/python web_browser/fetch_vendor.py      # once — ONNX Runtime Web into web_browser/vendor/
 .venv/bin/python web_browser/serve.py             # then open http://127.0.0.1:8081/
@@ -29,6 +35,28 @@ The page — *Lyra Car Assistant · Running locally in the browser* — download
 close to it), and each one turns green or red against its expected answer.
 
 No model yet? Build the whole thing first (below), then come back.
+
+### Publishing
+
+```bash
+cd export && hf upload zugetor/Lyra-Car-Assistant-enth .
+```
+
+That uploads the bundle and leaves the model card alone: the card lives only on Hugging Face, the code only here.
+
+The demo on GitHub Pages is built by `.github/workflows/pages.yml` on every push to `master` that touches
+`web_browser/` (one-time setup: Settings → Pages → Source: GitHub Actions). It runs `web_browser/build_pages.py`,
+which copies the page and ONNX Runtime Web into `_site/` and writes a `config.js` pointing at the Hugging Face repo.
+The model isn't part of the site. `build_pages.py` pins a Hugging Face commit (`HF_REVISION`), because the browser
+caches by URL; after a new upload, put the new commit id there. To try the site the way Pages serves it:
+
+```bash
+python3 web_browser/build_pages.py && python3 -m http.server 8082 --bind 127.0.0.1 --directory _site
+```
+
+GitHub Pages can't send the COOP/COEP headers ONNX Runtime Web needs for threads, so `web_browser/coi-sw.js`, a
+service worker, adds them and the page reloads once on the first visit. Hugging Face sends CORS headers, which is
+all the cross-origin fetches need.
 
 ## Build it
 
@@ -84,7 +112,7 @@ unused. More controls will come.
 | `step2_finetune.py` | Fine-tunes `laya_pruned_enth/` with `laya.train.finetune` (4 epochs, options shuffled every epoch), calibrates, writes `laya_finetuned_enth/`. |
 | `step3_export_onnx.py` | Exports the whole decision model (encoder + head) to ONNX, checks it against torch on real questions of several lengths, stores the weights in 8 bits, and writes the bundle to `export/`. |
 | `runtime.py` | `CarAssistant` — the decision logic a car would run. `car.decide("เปิดฝาท้ายหน่อย")["action"]` → `{"tailgate": "OPEN"}`. |
-| `web_browser/` | **The main page.** `lyra.js` (tokenizer, Laya prompt, car runtime on ONNX Runtime Web), `index.html`, `serve.py`, `fetch_vendor.py` (pinned onnxruntime-web, SHA-256 checked), `make_reference.py`. |
+| `web_browser/` | **The main page.** `lyra.js` (tokenizer, Laya prompt, car runtime on ONNX Runtime Web), `index.html`, `config.js` (where the model is), `serve.py`, `fetch_vendor.py` (pinned onnxruntime-web, SHA-256 checked), `make_reference.py`, and for GitHub Pages `build_pages.py` + `coi-sw.js`. |
 | `web_test/` | *Lyra Car Assistant · Web test* — the same kind of page, but Python runs the model. `server.py` (standard library, 127.0.0.1 only) + `index.html`. |
 | `car_questions.json` | The questions asked at runtime: one `control` choice question, one payload question per payload group, and `label_to_key` (the model sees `aircon`, the car gets `climate/mode`). |
 | `questions/` | `v1_controls.json` (11 controls + none) and `v2_media_apps.json` (v1 + media, apps, warmer/cooler — what `car_questions.json` is now). |
@@ -336,6 +364,9 @@ taught us. Numbers marked "with Chinese" were measured before Chinese was remove
 - The tokenizer splits on added tokens (`<bos>`, `\n`, runs of tabs …) before normalizing, and every piece in between
   gets its own `▁`. A port that skips this goes wrong on text with newlines.
 - ONNX Runtime Web `import()`s its `.mjs` from `env.wasm.wasmPaths`. Make that an absolute URL, not `vendor/`.
+- Download the bundle with `snapshot_download(..., local_dir=...)`. In the default Hugging Face cache every file is a
+  symlink into its own blob folder, and ONNX Runtime refuses `laya.onnx.data` because it "escapes" the folder
+  `laya.onnx` resolves to.
 - Weights inside the `.onnx` cost ~2x their size in RAM at load. Keep them in a separate file
   (`save_as_external_data=True`). ONNX Runtime Web won't find that file by itself: pass it as `externalData`.
 
@@ -347,12 +378,11 @@ taught us. Numbers marked "with Chinese" were measured before Chinese was remove
 - [ ] refit the ask-again gate on real commands
 - [ ] measure latency and RAM on the target device with ONNX Runtime Mobile
 - [ ] port `lyra.js`'s tokenizer and prompt builder to Kotlin / Java for the device
-- [ ] browser: cache the model (Cache Storage) so a reload doesn't fetch 212 MB again
-- [ ] public demo: model files on Hugging Face, the page on GitHub Pages — no server of ours
 
 Done so far: vocab pruned with identical answers, questions tuned (v2), Chinese dropped (`--langs en,th,zh` brings it
 back), fine-tuned to 96% / 94% on unseen sentences, exported to ONNX with 8-bit weights, running 100% in the browser
-with the same answers as Python, and a margin gate that stops re-asking right answers.
+with the same answers as Python, a margin gate that stops re-asking right answers, and a public demo: the model on
+Hugging Face, the page on GitHub Pages, cached in the browser after the first visit.
 
 ## Layout
 
@@ -361,7 +391,9 @@ lyra-car-assistant/
   run.sh  requirements.txt  common.py
   step0_download.py  step1_prune_vocab.py  check_step1.py  eval_laya.py
   train_phrases.py  gen_train_data.py  step2_finetune.py  step3_export_onnx.py  runtime.py
-  web_browser/           # lyra.js + index.html + serve.py + fetch_vendor.py + make_reference.py
+  web_browser/           # lyra.js + index.html + config.js + serve.py + fetch_vendor.py + make_reference.py
+                         #   + build_pages.py + coi-sw.js (GitHub Pages)
+  .github/workflows/     # pages.yml: builds and deploys the GitHub Pages demo
   web_test/              # server.py + index.html
   keep_text.txt  test_commands.txt  car_questions.json  eval_commands.tsv  eval_heldout.tsv
   questions/             # v1_controls.json, v2_media_apps.json
@@ -371,6 +403,7 @@ lyra-car-assistant/
   laya_finetuned_enth/   # git-ignored: fine-tuned checkpoint + finetune_summary.json
   export/                # git-ignored: laya.onnx + laya.onnx.data (8-bit) + tokenizer + configs — the on-device bundle
   web_browser/vendor/    # git-ignored: onnxruntime-web (fetch_vendor.py); web_browser/reference.json too
+  _site/                 # git-ignored: the GitHub Pages build (build_pages.py)
 ```
 
 The model builds on Laya (Apache-2.0, Convai Innovations); the pruned checkpoint keeps the upstream README.

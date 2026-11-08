@@ -4,6 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lyra Car Assistant</title>
+<script src="config.js"></script>
+<script>
+// ONNX Runtime Web only gets threads on a cross-origin isolated page. serve.py sends the headers for that; GitHub
+// Pages can't, so coi-sw.js (a service worker) adds them and the page reloads once.
+window.lyraReady = (async () => {
+  if (self.crossOriginIsolated || !self.isSecureContext || !("serviceWorker" in navigator)) return;
+  try {
+    await navigator.serviceWorker.register("coi-sw.js");
+    await navigator.serviceWorker.ready;
+  } catch { return; }                                    // no service worker: run on one thread
+  if (sessionStorage.getItem("lyra-coi-reload")) return; // reloaded once already and still not isolated
+  sessionStorage.setItem("lyra-coi-reload", "1");
+  location.reload();
+  await new Promise(() => {});
+})();
+</script>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --ink: #16181d; --muted: #646b78; --line: #e3e6eb;
@@ -122,6 +138,11 @@
 <script src="vendor/ort.wasm.min.js"></script>
 <script type="module">
 import { CarAssistant } from "./lyra.js";
+await window.lyraReady;
+
+// config.js: model = where the export/ bundle lives, examples = where the eval .tsv files are, cache = a Cache
+// Storage name (only for a pinned revision). The GitHub Pages build points it at Hugging Face.
+const CFG = {model: "../export/", examples: "../", cache: null, ...(window.LYRA_CONFIG || {})};
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
@@ -134,9 +155,11 @@ ort.env.wasm.wasmPaths = new URL("vendor/", location.href).href;   // absolute: 
 const threads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 ort.env.wasm.numThreads = threads;
 
-function progress(stage, frac = 0, bytes = 0) {
+function progress(stage, frac = 0, bytes = 0, cached = false) {
+  const mb = `${(bytes / 2 ** 20).toFixed(0)} MB`;
   const text = {tokenizer: "Loading the tokenizer…", session: "Starting ONNX Runtime Web…",
-                model: `Downloading the 8-bit model… ${(bytes / 2 ** 20).toFixed(0)} MB`}[stage];
+                model: cached ? `Loading the 8-bit model from this browser's cache… ${mb}`
+                              : `Downloading the 8-bit model… ${mb}`}[stage];
   $("#loadText").textContent = text;
   $("#loadBar").style.width = (stage === "model" ? 10 + frac * 80 : stage === "session" ? 95 : 5) + "%";
 }
@@ -305,9 +328,9 @@ $("#hist").addEventListener("click", (e) => {
   try {
     const t0 = performance.now();
     const [car, held, tune] = await Promise.all([
-      CarAssistant.load({onProgress: progress}),
-      fetch("../eval_heldout.tsv").then((r) => r.ok ? r.text() : ""),
-      fetch("../eval_commands.tsv").then((r) => r.ok ? r.text() : ""),
+      CarAssistant.load({base: CFG.model, cache: CFG.cache, onProgress: progress}),
+      fetch(CFG.examples + "eval_heldout.tsv").then((r) => r.ok ? r.text() : ""),
+      fetch(CFG.examples + "eval_commands.tsv").then((r) => r.ok ? r.text() : ""),
     ]);
     CAR = car;
     PRESETS = [...parseTsv(held, "heldout"), ...parseTsv(tune, "tuning")];

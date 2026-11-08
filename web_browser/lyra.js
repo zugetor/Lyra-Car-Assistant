@@ -164,11 +164,42 @@ export function readNumber(text, control) {
 
 // --------------------------------------------------------------------------- the car runtime
 export class CarAssistant {
-  static async load({ base = "../export/", onProgress = () => {}, gate = "margin" } = {}) {
+  // base: folder or URL with the export/ bundle, e.g. a Hugging Face ".../resolve/<revision>/".
+  // cache: a Cache Storage name. Then every file is downloaded once and read from the browser's cache on later
+  // visits, so `base` must point at files that never change (a pinned revision, not "main"). Cached files from
+  // any other base are deleted.
+  static async load({ base = "../export/", onProgress = () => {}, gate = "margin", cache = null } = {}) {
+    const baseUrl = new URL(base, location.href).href;
+    const store = cache && self.caches ? await caches.open(cache).catch(() => null) : null;
+    if (store) for (const req of await store.keys()) if (!req.url.startsWith(baseUrl)) await store.delete(req);
+    const open = async (p) => {
+      const url = baseUrl + p;
+      const hit = store && await store.match(url);
+      return hit ? { url, r: hit, cached: true } : { url, r: await fetch(url), cached: false };
+    };
+    const read = async ({ url, r, cached }, onChunk = () => {}) => {
+      const reader = r.body.getReader();
+      const chunks = [];
+      let size = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        size += value.length;
+        onChunk(value.length);
+      }
+      const bytes = new Uint8Array(size);
+      let off = 0;
+      for (const c of chunks) { bytes.set(c, off); off += c.length; }
+      if (store && !cached) {
+        store.put(url, new Response(bytes, { headers: { "Content-Length": String(size) } })).catch(() => {});
+      }
+      return bytes;
+    };
     const getJson = async (p, optional = false) => {
-      const r = await fetch(base + p);
-      if (!r.ok) { if (optional) return null; throw new Error(`${base + p}: HTTP ${r.status}`); }
-      return r.json();
+      const o = await open(p);
+      if (!o.r.ok) { if (optional) return null; throw new Error(`${o.url}: HTTP ${o.r.status}`); }
+      return JSON.parse(new TextDecoder().decode(await read(o)));
     };
     onProgress("tokenizer");
     const [tj, tcfg, qcfg, rl, summary] = await Promise.all([
@@ -179,30 +210,15 @@ export class CarAssistant {
     // laya.onnx is the graph, laya.onnx.data holds the weights. An export made with --single-file has no
     // .data file; then laya.onnx carries everything and the 404 is expected.
     onProgress("model", 0);
-    const [rg, rd] = await Promise.all([fetch(base + "laya.onnx"), fetch(base + "laya.onnx.data")]);
-    if (!rg.ok) throw new Error(`${base}laya.onnx: HTTP ${rg.status}`);
-    const parts = rd.ok ? [rg, rd] : [rg];
-    const total = parts.reduce((n, r) => n + (Number(r.headers.get("Content-Length")) || 0), 0);
+    const [og, od] = await Promise.all([open("laya.onnx"), open("laya.onnx.data")]);
+    if (!og.r.ok) throw new Error(`${og.url}: HTTP ${og.r.status}`);
+    const parts = od.r.ok ? [og, od] : [og];
+    const total = parts.reduce((n, o) => n + (Number(o.r.headers.get("Content-Length")) || 0), 0);
+    const fromCache = parts.every((o) => o.cached);
     let got = 0;
-    const readAll = async (r) => {
-      const reader = r.body.getReader();
-      const chunks = [];
-      let size = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        size += value.length;
-        got += value.length;
-        onProgress("model", total ? got / total : 0, got);
-      }
-      const bytes = new Uint8Array(size);
-      let off = 0;
-      for (const c of chunks) { bytes.set(c, off); off += c.length; }
-      return bytes;
-    };
-    const graph = await readAll(rg);
-    const data = rd.ok ? await readAll(rd) : null;
+    const tick = (n) => { got += n; onProgress("model", total ? got / total : 0, got, fromCache); };
+    const graph = await read(og, tick);
+    const data = od.r.ok ? await read(od, tick) : null;
 
     onProgress("session");
     const t0 = performance.now();

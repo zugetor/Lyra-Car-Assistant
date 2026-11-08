@@ -21,3 +21,4 @@ export/
 # in-browser page: downloaded runtime and generated reference (re-create with the scripts in web_browser/)
 web_browser/vendor/
 web_browser/reference.json
+_site/
