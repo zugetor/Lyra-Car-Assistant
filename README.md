@@ -17,7 +17,7 @@ that counts — that and latency/RAM on the actual hardware.
 
 ## Try it in your browser
 
-**[zugetor.github.io/lyra-car-assistant](https://zugetor.github.io/lyra-car-assistant/)** — nothing to install. The
+**[zugetor.github.io/Lyra-Car-Assistant](https://zugetor.github.io/Lyra-Car-Assistant/)** — nothing to install. The
 page pulls the model from [Hugging Face](https://huggingface.co/zugetor/Lyra-Car-Assistant-enth) (~218 MB, once;
 after that it loads from the browser's cache in under a second) and runs it in the tab.
 
