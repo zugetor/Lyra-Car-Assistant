@@ -4,9 +4,11 @@ web_browser/build_pages.py  --  build the static demo for GitHub Pages; the mode
 
 Writes OUT/ (default _site/) with everything the page needs except the model:
   index.html, lyra.js, tokens.css, coi-sw.js   the page (coi-sw.js adds the isolation headers Pages can't send)
+  speech.js, trim.js, thai_text.js      hold-to-talk: Thai speech-to-text in the browser
   vendor/                               ONNX Runtime Web, via fetch_vendor.py (SHA-256 checked)
   eval_heldout.tsv, eval_commands.tsv   the example commands
-  config.js                             model = HF_REPO at HF_REVISION, kept in the browser's cache
+  config.js                             model = HF_REPO at HF_REVISION, speech = SPEECH_REPO at SPEECH_REVISION,
+                                        both kept in the browser's cache
 
 The visitor's browser downloads the model straight from huggingface.co (HF sends CORS headers) and keeps it
 in Cache Storage, so the second visit loads it from disk. That cache is keyed by URL, which is why
@@ -32,7 +34,9 @@ import fetch_vendor  # noqa: E402
 
 HF_REPO = "zugetor/Lyra-Car-Assistant-enth"
 HF_REVISION = "531964c77c59ce742f32c26506b14e11a76ee0b3"
-PAGE = ["index.html", "lyra.js", "coi-sw.js", "tokens.css"]
+SPEECH_REPO = "zugetor/zipformer-CarCMD-TH"                 # the Thai speech-to-text model (sherpa-onnx bundle)
+SPEECH_REVISION = "525ddc8fb0827399d06e1988db876b91ad231540"
+PAGE = ["index.html", "lyra.js", "coi-sw.js", "tokens.css", "speech.js", "trim.js", "thai_text.js"]
 EXAMPLES = ["eval_heldout.tsv", "eval_commands.tsv"]
 MARKER = ".nojekyll"      # GitHub Pages: serve files as they are. Also marks OUT/ as ours to delete.
 
@@ -57,7 +61,8 @@ def main():
     for name in EXAMPLES:
         shutil.copy(os.path.join(ROOT, name), args.out)
     cfg = {"model": f"https://huggingface.co/{args.repo}/resolve/{args.revision}/", "examples": "./",
-           "cache": "lyra-model"}
+           "cache": "lyra-model",
+           "speech": f"https://huggingface.co/{SPEECH_REPO}/resolve/{SPEECH_REVISION}/", "speechCache": "zipformer-carcmd-th"}
     with open(os.path.join(args.out, "config.js"), "w", encoding="utf-8") as f:
         f.write("// written by web_browser/build_pages.py\nwindow.LYRA_CONFIG = " + json.dumps(cfg, indent=2) + ";\n")
     open(os.path.join(args.out, MARKER), "w").close()

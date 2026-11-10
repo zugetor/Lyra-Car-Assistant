@@ -135,6 +135,32 @@ button.primary:hover:not(:disabled) { transform: translateY(-1px); }
 button.primary:active:not(:disabled) { transform: translateY(0); }
 button:disabled, input:disabled { opacity: 0.45; cursor: default; }
 
+/* hold to talk */
+button.mic {
+  flex: none; display: inline-grid; place-items: center; width: 3.25rem; min-height: 3.25rem; padding: 0;
+  border: 1px solid var(--color-rule-2); border-radius: var(--radius-pill);
+  background: var(--color-paper-2); color: var(--color-ink-2);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: background var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out),
+              color var(--dur-micro) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+}
+button.mic svg { width: 1.25rem; height: 1.25rem; pointer-events: none; }
+button.mic:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-ink); }
+button.mic[data-state="listening"] {
+  background: var(--color-accent); border-color: var(--color-accent); color: var(--color-paper);
+  box-shadow: 0 0 0 6px var(--color-glow-2), 0 0 18px 4px var(--color-glow);
+}
+button.mic[data-state="loading"], button.mic[data-state="busy"] { cursor: progress; border-color: var(--color-accent); }
+@media (prefers-reduced-motion: no-preference) {
+  button.mic[data-state="listening"] { animation: mic-pulse 1.4s var(--ease-in-out) infinite; }
+  button.mic[data-state="loading"] svg, button.mic[data-state="busy"] svg { animation: mic-wait 1s var(--ease-in-out) infinite alternate; }
+}
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 10px var(--color-glow-2), 0 0 26px 6px var(--color-glow); } }
+@keyframes mic-wait { to { opacity: 0.35; } }
+.mic-status { margin: 0; color: var(--color-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.mic-status:empty { display: none; }
+.mic-status.err { color: var(--color-bad); }
+
 /* result */
 #result { min-height: 9rem; }
 .said { color: var(--color-muted); font-size: var(--text-md); }
@@ -263,8 +289,15 @@ table.kv td:first-child { color: var(--color-muted); width: 8.5rem; padding-righ
   <section class="app__main" aria-label="Try a command">
     <form id="f">
       <input type="text" id="q" placeholder="พิมพ์คำสั่ง เช่น เปิดฝาท้ายหน่อย · Open the tailgate" autocomplete="off" aria-label="Command" disabled>
+      <button type="button" class="mic" id="mic" data-state="idle" aria-pressed="false" disabled
+              aria-label="Hold to talk (Thai)" title="Hold to talk in Thai, let go to stop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>
+        </svg>
+      </button>
       <button type="submit" class="primary" id="send" disabled>Send</button>
     </form>
+    <p class="mic-status" id="micStatus" aria-live="polite"></p>
     <div class="panel" id="result" aria-live="polite">
       <div id="loadText" class="empty">Loading the tokenizer…</div>
       <div class="progress"><i id="loadBar"></i></div>
@@ -286,16 +319,20 @@ table.kv td:first-child { color: var(--color-muted); width: 8.5rem; padding-righ
 </main>
 <footer class="foot-line">
   <p>© 2026 ZuGeTor</p>
-  <p><a href="https://gh.zugetor.com/">gh.zugetor.com</a> · <a href="https://github.com/zugetor/Lyra-Car-Assistant">Code</a> · <a href="https://huggingface.co/zugetor/Lyra-Car-Assistant-enth">Model</a></p>
+  <p><a href="https://gh.zugetor.com/">gh.zugetor.com</a> · <a href="https://github.com/zugetor/Lyra-Car-Assistant">Code</a> · <a href="https://huggingface.co/zugetor/Lyra-Car-Assistant-enth">Model</a> · <a href="https://huggingface.co/zugetor/zipformer-CarCMD-TH">Speech model</a></p>
 </footer>
 <script src="vendor/ort.wasm.min.js"></script>
 <script type="module">
 import { CarAssistant } from "./lyra.js";
+import { SpeechToText, startRecording } from "./speech.js";
 await window.lyraReady;
 
 // config.js: model = where the export/ bundle lives, examples = where the eval .tsv files are, cache = a Cache
 // Storage name (only for a pinned revision). The GitHub Pages build points it at Hugging Face.
-const CFG = {model: "../export/", examples: "../", cache: null, ...(window.LYRA_CONFIG || {})};
+// speech = the Thai speech-to-text model (zipformer-CarCMD-TH on Hugging Face, pinned), speechCache its cache.
+const SPEECH_HF = "https://huggingface.co/zugetor/zipformer-CarCMD-TH/resolve/525ddc8fb0827399d06e1988db876b91ad231540/";
+const CFG = {model: "../export/", examples: "../", cache: null, speech: SPEECH_HF, speechCache: "zipformer-carcmd-th",
+             ...(window.LYRA_CONFIG || {})};
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
@@ -460,6 +497,110 @@ async function selfTest() {
   }
 }
 
+// ---------------------------------------------------------------- hold to talk
+// The first press downloads the speech model (about 91 MB, then kept in Cache Storage). After that: hold the
+// button (or Space / Enter on it) while speaking, let go, and the transcript goes into the box and to Lyra.
+const mic = $("#mic");
+let STT = null, sttLoading = null, rec = null, held = false, opening = false, busy = false;
+const micState = (s) => { mic.dataset.state = s; mic.setAttribute("aria-pressed", String(s === "listening")); };
+const micStatus = (text, err = false) => { $("#micStatus").textContent = text; $("#micStatus").classList.toggle("err", err); };
+
+function loadSpeech() {
+  if (STT) return Promise.resolve(STT);
+  if (!sttLoading) {
+    micState("loading");
+    micStatus("Getting the speech model…");
+    sttLoading = SpeechToText.load({base: CFG.speech, cache: CFG.speechCache, onProgress: (frac, bytes, cached) =>
+      micStatus(`${cached ? "Loading the speech model from this browser's cache" : "Downloading the speech model"}… ` +
+                `${(bytes / 2 ** 20).toFixed(0)} MB${frac ? ` · ${Math.round(frac * 100)}%` : ""}`)})
+      .then((s) => { STT = s; micState("idle"); micStatus("Speech model ready. Hold the mic button and say a command in Thai."); return s; })
+      .catch((e) => { sttLoading = null; micState("idle"); micStatus(`Couldn't load the speech model: ${e.message}`, true); throw e; });
+  }
+  return sttLoading;
+}
+
+const BLOCKED = "The microphone is blocked. Allow it in this site's settings, then try again.";
+async function micDenied() {          // a blocked microphone can leave getUserMedia pending instead of failing
+  try { return (await navigator.permissions.query({name: "microphone"})).state === "denied"; } catch { return false; }
+}
+async function pressStart() {
+  if (mic.disabled || held || opening || rec || busy) return;
+  if (!STT) { loadSpeech().catch(() => {}); return; }         // first press only fetches the model
+  held = true; opening = true;
+  micState("listening");
+  micStatus("Listening… let go when you're done.");
+  try {
+    if (await micDenied()) throw new DOMException(BLOCKED, "NotAllowedError");
+    rec = await startRecording();
+  } catch (e) {
+    held = false; opening = false; micState("idle");
+    micStatus(e.name === "NotAllowedError" ? BLOCKED : `Microphone: ${e.message}`, true);
+    return;
+  }
+  opening = false;
+  if (!held) {                       // let go before the microphone opened, usually to answer the permission prompt
+    rec.cancel(); rec = null; micState("idle");
+    micStatus("Microphone on. Now hold the button while you speak.");
+    return;
+  }
+  rec.timer = setTimeout(finish, 15000);                        // 15 s at most
+}
+function pressEnd() {
+  if (!held) return;
+  held = false;
+  if (opening) { micState("loading"); micStatus("Waiting for the microphone… allow it if the browser asks."); return; }
+  if (rec) finish();
+}
+async function finish() {
+  const r = rec;
+  if (!r) return;
+  rec = null; held = false; busy = true;
+  clearTimeout(r.timer);
+  micState("busy");
+  micStatus("Transcribing…");
+  try {
+    const samples = await r.stop();
+    if (samples.length < 16000 * 0.3) { micStatus("Too short. Hold the button down while you speak."); return; }
+    const t = await STT.transcribe(samples);
+    if (!t.text) { micStatus("Didn't catch anything. Try again, a little closer to the microphone."); return; }
+    $("#q").value = t.text;
+    micStatus(`Heard “${t.raw.replace(/ํา/g, "ำ")}” · ${t.seconds.toFixed(1)} s of speech, text in ${t.ms.total} ms`);
+    await decide(t.text);
+  } catch (e) {
+    micStatus(`Speech-to-text failed: ${e.message}`, true);
+  } finally {
+    busy = false;
+    micState("idle");
+  }
+}
+mic.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  try { mic.setPointerCapture(e.pointerId); } catch {}         // keeps the release even if the finger slides off
+  pressStart();
+});
+["pointerup", "pointercancel", "lostpointercapture"].forEach((t) => mic.addEventListener(t, pressEnd));
+mic.addEventListener("keydown", (e) => {
+  if (e.key !== " " && e.key !== "Enter") return;
+  e.preventDefault();
+  if (!e.repeat) pressStart();
+});
+mic.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); pressEnd(); } });
+mic.addEventListener("contextmenu", (e) => e.preventDefault());   // a long press on a phone shouldn't open a menu
+mic.addEventListener("click", (e) => e.preventDefault());
+
+// For checks without a microphone: window.lyraSpeech.run(samples16k) transcribes and decides like a release would.
+window.lyraSpeech = {
+  load: loadSpeech,
+  async run(samples) {
+    await loadSpeech();
+    const t = await STT.transcribe(samples);
+    $("#q").value = t.text;
+    if (t.text) await decide(t.text);
+    return t;
+  },
+};
+
 // ---------------------------------------------------------------- wiring
 $("#f").addEventListener("submit", (e) => { e.preventDefault(); decide($("#q").value); });
 $("#filters").addEventListener("click", (e) => {
@@ -490,8 +631,10 @@ $("#hist").addEventListener("click", (e) => {
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
     $("#tagline").title = `ONNX Runtime Web ${ort.env.versions?.web || ""} · WASM, ${threads} thread${threads > 1 ? "s" : ""}` +
       ` · 8-bit model ${(CAR.modelBytes / 2 ** 20).toFixed(0)} MB · vocab ${CAR.tok.size.toLocaleString()} · ready in ${secs}s · no server-side inference`;
-    $("#result").innerHTML = `<div class="empty">Ready. Everything below runs in this browser tab. Type a command or pick one below.</div>`;
+    $("#result").innerHTML = `<div class="empty">Ready. Everything below runs in this browser tab. Type a command, hold the mic button and say one in Thai, or pick one below.</div>`;
     ["#q", "#send"].forEach((s) => ($(s).disabled = false));
+    if (navigator.mediaDevices?.getUserMedia && self.AudioWorkletNode) mic.disabled = false;
+    else mic.title = "Speech needs a browser with microphone access over HTTPS";
     renderPresets();
     $("#q").focus();
     if (new URLSearchParams(location.search).has("selftest")) selfTest();
