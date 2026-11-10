@@ -112,42 +112,86 @@ const TAP = `class Tap extends AudioWorkletProcessor {
   process(inputs) { const ch = inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; } }
 registerProcessor("tap", Tap);`;
 
-/** Starts recording; `stop()` on the result keeps listening for `tailMs`, releases the microphone and resolves
- *  to 16 kHz mono samples, `cancel()` just releases it. The browser's echo cancelling, noise suppression and
- *  gain control stay on: in a car they take out the music and the road. onLevel(peak 0-1) gets called as
- *  audio comes in. */
-export async function startRecording({ onLevel = null } = {}) {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-  const ctx = new AudioContext();
-  try {
-    await ctx.resume();
-    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP], { type: "text/javascript" })));
-  } catch (e) {
+/** The microphone, opened once and then kept warm: opening it takes long enough (getUserMedia, an AudioContext,
+ *  the worklet) that the first word was gone by the time audio flowed. While warm and not recording it keeps
+ *  only the last `preRollMs` of audio, so speech that starts right as the button goes down is kept too. After
+ *  `idleMs` without a recording it closes again. The browser's echo cancelling, noise suppression and gain
+ *  control stay on: in a car they take out the music and the road. */
+export class Microphone {
+  constructor({ preRollMs = 500, idleMs = 30000 } = {}) {
+    Object.assign(this, { preRollMs, idleMs, ctx: null, ring: [], ringLen: 0, rec: null, idle: null });
+  }
+  get isOpen() { return !!this.ctx; }
+
+  /** Opens the microphone; resolves once audio is actually coming in. */
+  async open() {
+    if (this.ctx) return;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const ctx = new AudioContext();
+    try {
+      await ctx.resume();
+      await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP], { type: "text/javascript" })));
+    } catch (e) {
+      stream.getTracks().forEach((t) => t.stop());
+      ctx.close();
+      throw e;
+    }
+    const node = new AudioWorkletNode(ctx, "tap"), source = ctx.createMediaStreamSource(stream);
+    let flowing;
+    const first = new Promise((r) => { flowing = r; });
+    node.port.onmessage = (e) => { flowing(); this._chunk(e.data); };
+    source.connect(node);
+    Object.assign(this, { ctx, stream, node, source, ring: [], ringLen: 0 });
+    stream.getAudioTracks()[0].addEventListener("ended", () => this.close());   // unplugged, or taken away
+    await first;
+    this._armIdle();
+  }
+
+  _chunk(c) {
+    if (!this.ctx) return;
+    if (this.rec) return void this.rec.push(c);
+    this.ring.push(c);
+    this.ringLen += c.length;
+    const keep = (this.ctx.sampleRate * this.preRollMs) / 1000;
+    while (this.ring.length > 1 && this.ringLen - this.ring[0].length >= keep) this.ringLen -= this.ring.shift().length;
+  }
+  _armIdle() { clearTimeout(this.idle); this.idle = setTimeout(() => this.close(), this.idleMs); }
+
+  /** Starts a recording (the microphone must be open), with the pre-roll in front. */
+  start() {
+    clearTimeout(this.idle);
+    this.rec = this.ring;
+    this.ring = [];
+    this.ringLen = 0;
+  }
+  /** Keeps listening for `tailMs` (the last syllable often trails off after the release), then resolves to
+   *  16 kHz mono samples. The microphone stays warm. */
+  async stop({ tailMs = 300 } = {}) {
+    await new Promise((r) => setTimeout(r, tailMs));
+    const chunks = this.rec || [], rate = this.ctx ? this.ctx.sampleRate : SAMPLE_RATE;
+    this.rec = null;
+    if (this.ctx) this._armIdle();
+    const raw = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+    let at = 0;
+    for (const c of chunks) { raw.set(c, at); at += c.length; }
+    return resampleTo16k(raw, rate);
+  }
+  /** Drops a recording without decoding it. */
+  cancel() { this.rec = null; if (this.ctx) this._armIdle(); }
+  /** Releases the microphone (the browser's "in use" indicator goes off). */
+  close() {
+    clearTimeout(this.idle);
+    if (!this.ctx) return;
+    const { ctx, stream, node, source } = this;
+    this.ctx = null;
+    this.ring = [];
+    this.ringLen = 0;
+    source.disconnect();
+    node.disconnect();
     stream.getTracks().forEach((t) => t.stop());
     ctx.close();
-    throw e;
   }
-  const node = new AudioWorkletNode(ctx, "tap"), chunks = [];
-  node.port.onmessage = (e) => {
-    chunks.push(e.data);
-    if (onLevel) { let peak = 0; for (const v of e.data) peak = Math.max(peak, Math.abs(v)); onLevel(peak); }
-  };
-  const source = ctx.createMediaStreamSource(stream);
-  source.connect(node);
-  const release = () => { source.disconnect(); node.disconnect(); stream.getTracks().forEach((t) => t.stop()); return ctx.close(); };
-  return {
-    async stop({ tailMs = 300 } = {}) {
-      await new Promise((r) => setTimeout(r, tailMs));        // the last syllable often trails off after the release
-      const rate = ctx.sampleRate;
-      await release();
-      const raw = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
-      let at = 0;
-      for (const c of chunks) { raw.set(c, at); at += c.length; }
-      return resampleTo16k(raw, rate);
-    },
-    cancel: release,
-  };
 }
 
 /** Any rate -> 16 kHz with the browser's own resampler. */

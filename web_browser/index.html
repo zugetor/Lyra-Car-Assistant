@@ -290,7 +290,7 @@ table.kv td:first-child { color: var(--color-muted); width: 8.5rem; padding-righ
     <form id="f">
       <input type="text" id="q" placeholder="พิมพ์คำสั่ง เช่น เปิดฝาท้ายหน่อย · Open the tailgate" autocomplete="off" aria-label="Command" disabled>
       <button type="button" class="mic" id="mic" data-state="idle" aria-pressed="false" disabled
-              aria-label="Hold to talk (Thai)" title="Hold to talk in Thai, let go to stop">
+              aria-label="Hold to talk (Thai)" title="Hold to talk in Thai, let go to stop. The microphone stays on for 30 s after each command.">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>
         </svg>
@@ -324,7 +324,7 @@ table.kv td:first-child { color: var(--color-muted); width: 8.5rem; padding-righ
 <script src="vendor/ort.wasm.min.js"></script>
 <script type="module">
 import { CarAssistant } from "./lyra.js";
-import { SpeechToText, startRecording } from "./speech.js";
+import { SpeechToText, Microphone } from "./speech.js";
 await window.lyraReady;
 
 // config.js: model = where the export/ bundle lives, examples = where the eval .tsv files are, cache = a Cache
@@ -500,8 +500,10 @@ async function selfTest() {
 // ---------------------------------------------------------------- hold to talk
 // The first press downloads the speech model (about 91 MB, then kept in Cache Storage). After that: hold the
 // button (or Space / Enter on it) while speaking, let go, and the transcript goes into the box and to Lyra.
-const mic = $("#mic");
-let STT = null, sttLoading = null, rec = null, held = false, opening = false, busy = false;
+// The microphone stays open for 30 s after a command, so the next press records at once, the half second
+// before the press included. The button only turns to "listening" once audio is really coming in.
+const mic = $("#mic"), MIC = new Microphone({preRollMs: 500, idleMs: 30000});
+let STT = null, sttLoading = null, held = false, opening = false, recording = false, busy = false, cap = null;
 const micState = (s) => { mic.dataset.state = s; mic.setAttribute("aria-pressed", String(s === "listening")); };
 const micStatus = (text, err = false) => { $("#micStatus").textContent = text; $("#micStatus").classList.toggle("err", err); };
 
@@ -524,42 +526,48 @@ async function micDenied() {          // a blocked microphone can leave getUserM
   try { return (await navigator.permissions.query({name: "microphone"})).state === "denied"; } catch { return false; }
 }
 async function pressStart() {
-  if (mic.disabled || held || opening || rec || busy) return;
+  if (mic.disabled || held || opening || recording || busy) return;
   if (!STT) { loadSpeech().catch(() => {}); return; }         // first press only fetches the model
-  held = true; opening = true;
+  held = true;
+  if (!MIC.isOpen) {
+    opening = true;
+    micState("loading");
+    micStatus("Starting the microphone… speak when the button turns orange.");
+    try {
+      if (await micDenied()) throw new DOMException(BLOCKED, "NotAllowedError");
+      await MIC.open();
+    } catch (e) {
+      held = false; opening = false; micState("idle");
+      micStatus(e.name === "NotAllowedError" ? BLOCKED : `Microphone: ${e.message}`, true);
+      return;
+    }
+    opening = false;
+    if (!held) {                     // let go before the microphone opened, usually to answer the permission prompt
+      micState("idle");
+      micStatus("Microphone on. Now hold the button while you speak.");
+      return;
+    }
+  }
+  MIC.start();
+  recording = true;
   micState("listening");
   micStatus("Listening… let go when you're done.");
-  try {
-    if (await micDenied()) throw new DOMException(BLOCKED, "NotAllowedError");
-    rec = await startRecording();
-  } catch (e) {
-    held = false; opening = false; micState("idle");
-    micStatus(e.name === "NotAllowedError" ? BLOCKED : `Microphone: ${e.message}`, true);
-    return;
-  }
-  opening = false;
-  if (!held) {                       // let go before the microphone opened, usually to answer the permission prompt
-    rec.cancel(); rec = null; micState("idle");
-    micStatus("Microphone on. Now hold the button while you speak.");
-    return;
-  }
-  rec.timer = setTimeout(finish, 15000);                        // 15 s at most
+  cap = setTimeout(finish, 15000);                              // 15 s at most
 }
 function pressEnd() {
   if (!held) return;
   held = false;
-  if (opening) { micState("loading"); micStatus("Waiting for the microphone… allow it if the browser asks."); return; }
-  if (rec) finish();
+  if (opening) { micStatus("Waiting for the microphone… allow it if the browser asks."); return; }
+  if (recording) finish();
 }
 async function finish() {
-  const r = rec;
-  if (!r) return;
-  rec = null; held = false; busy = true;
-  clearTimeout(r.timer);
+  if (!recording) return;
+  recording = false; held = false; busy = true;
+  clearTimeout(cap);
   micState("busy");
   micStatus("Transcribing…");
   try {
-    const samples = await r.stop();
+    const samples = await MIC.stop();
     if (samples.length < 16000 * 0.3) { micStatus("Too short. Hold the button down while you speak."); return; }
     const t = await STT.transcribe(samples);
     if (!t.text) { micStatus("Didn't catch anything. Try again, a little closer to the microphone."); return; }
@@ -573,6 +581,7 @@ async function finish() {
     micState("idle");
   }
 }
+document.addEventListener("visibilitychange", () => { if (document.hidden && !recording) MIC.close(); });
 mic.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
   e.preventDefault();
@@ -592,6 +601,7 @@ mic.addEventListener("click", (e) => e.preventDefault());
 // For checks without a microphone: window.lyraSpeech.run(samples16k) transcribes and decides like a release would.
 window.lyraSpeech = {
   load: loadSpeech,
+  mic: MIC,
   async run(samples) {
     await loadSpeech();
     const t = await STT.transcribe(samples);
