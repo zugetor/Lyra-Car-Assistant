@@ -36,7 +36,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
-    def do_GET(self):
+    def _route(self, serve):
         path = self.path.split("?", 1)[0]
         if path in ("/", "/index.html"):
             self.send_response(302)
@@ -44,10 +44,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.end_headers()
         if ".." in path or not (path.startswith(ALLOWED_DIRS) or path in ALLOWED_FILES):
             return self.send_error(404)
-        return super().do_GET()
+        return serve()
+
+    def do_GET(self):
+        return self._route(super().do_GET)
 
     def do_HEAD(self):
-        return self.do_GET() if self.path in ("/", "/index.html") else super().do_HEAD()
+        return self._route(super().do_HEAD)
 
     def log_message(self, fmt, *args):
         if args and str(args[1]).startswith(("4", "5")):
